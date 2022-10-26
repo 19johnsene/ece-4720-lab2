@@ -754,7 +754,7 @@ void convert_mips() {
 	printf("\nConverting MIPS to machine...\n");
 	// Read in MIPS instructions line by line
 	while(fgets(buffer, buffer_length, fp_i)) {
-		
+
 		char* temp = buffer;
 
 		// Get the instruction name
@@ -780,6 +780,7 @@ void convert_mips() {
 							machine = 0x9; // opcode
 							machine <<= 26;
 							mips_regs_to_machine(1, regs, &machine);
+							printf("hit 1\n");
 						} else { // ADDI
 							machine = 0x8; // opcode
 							machine <<= 26;
@@ -890,6 +891,7 @@ void convert_mips() {
 					machine = 0x23; // opcode
 					machine <<= 26;
 					mips_regs_to_machine(3, regs, &machine);
+					printf("hit 3\n");
 				} else if (instr[1] == 'b' || instr[1] == 'B') { // LB
 					machine = 0x32; // opcode
 					machine <<= 26;
@@ -1012,6 +1014,7 @@ void convert_mips() {
 					machine = 0x2B; // opcode
 					machine <<= 26;
 					mips_regs_to_machine(3, regs, &machine);
+					printf("hit 2\n");
 				} else if (instr[1] == 'b' || instr[1] == 'B') { // SB
 					machine = 0x28; // opcode
 					machine <<= 26;
@@ -2235,21 +2238,28 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 	uint32_t shamt = 0; 
 	const char delim[2] = ",";
 	char* temp;
+	char* save = mips_instr;
 
 	switch (format) {
 		// R-Format
 		// [ op - 6][ rs - 5 ][ rt - 5 ][ rd - 5 ][ shamt - 5 ][ funct - 6 ]
 		case 0: {
-			temp = strtok(mips_instr, delim);
+			printf("We have an R instruction\n");
+			while ((temp = strtok_r(save, delim, &save))) {
+				printf("token is %s\n", temp);
+				if (count > 0) {
+					temp++;
+				}
 
-			while (temp != NULL) {
 				if (count == 2 && *(temp) != '$') { 
 					// Then we have a shamt
 					shamt = atoi(temp);
+					printf("shamt is %d\n", shamt);
 
 				} else {
 					// Typical case
 					// Determine which register
+					printf("Current register is %s\n", temp+1);
 					reg_temp = decode_mips_register(temp+1);
 
 					switch (count) {
@@ -2271,8 +2281,6 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 					}
 				}
 				count++;
-				temp = strtok(NULL, delim);
-				temp++;
 			}
 
 		// Add rs, rt, rd, shamt all into the instruction to be returned
@@ -2321,9 +2329,13 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 		// NOTE: this case assumes typical format for I-instruction is being used
 		// [ op - 6][ rs - 5 ][ rt - 5 ][    immmediate - 16    ]
 		case 1:
-			temp = strtok(mips_instr, delim);
+			printf("We have an I instruction\n");
 
-			while (temp != NULL) {
+			while ((temp = strtok_r(save, delim, &save))) {
+				if (count > 0) {
+					temp++;
+				}				
+				
 				if (count == 2 && *(temp) != '$') {
 					immediate = atoi(temp);
 					break;
@@ -2346,9 +2358,8 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 					break;
 				}
 				count++;
-				temp = strtok(NULL, delim);
-				temp++;
 			}
+
 			reg_temp = r1;
 			reg_temp <<= 21;
 			*machine_instr += reg_temp;
@@ -2361,6 +2372,7 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 		// J-Format
 		// [ op - 6][        const/address - 26        ]
 		case 2:
+			printf("We have a J instruction\n");
 			// Value stored in machine is low-order 26 bits (addr / 4)
 			address = atoi(mips_instr) / 4;
 			*machine_instr += address;
@@ -2368,27 +2380,32 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 
 		// I-Format Exceptions (Special cases)
 		case 3: {
+			printf("We have an I-Special instruction\n");
 			char delim1[2] = ")";
-			temp = strtok(mips_instr, delim);
 
-			while (temp != NULL) {
+			while ((temp = strtok_r(save, delim, &save))) {
+				printf("token is %s\n", temp);
+				if (count > 0) {
+					temp++;
+				}
+
 				if (count == 1 && *(temp) != '$') { 
 					// either $reg0 imm($reg1) or $reg0 imm
 					char* offs = strchr(temp, '(');
+					printf("offs is %s\n", offs);
 					
 					// $rt imm($rs)
 					if (offs != NULL) { 
 						char* t = strtok(temp, delim1);
 						immediate = atoi(t);
+						printf("imm is %d\n", immediate);
 
+						// PROBLEM IS HERE
+						printf("temp is %s\n", temp);
 						int len = strlen(t);
-						temp = (temp + len + 2);
-						int i = 0;
-						while (temp[i] != ')') { // this may not be ideal but can change later
-							t[i] = temp[i];
-						}
-
-						reg_temp = decode_mips_register(t); // rs
+						temp = (temp + len + 2); // FIX HERE
+						printf("register that is shifted is %s\n", temp);
+						reg_temp = decode_mips_register(temp); // rs
 						reg_temp <<= 21;
 						*machine_instr += reg_temp;
 						reg_temp = r0; // rt
@@ -2422,6 +2439,7 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 						break;
 					} else {
 						// Determine which register
+						printf("decoding %s\n", temp+1);
 						reg_temp = decode_mips_register(temp+1);
 					}
 
@@ -2440,8 +2458,6 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 					}
 				}
 				count++;
-				temp = strtok(NULL, delim);
-				temp++;
 			}
 		break;
 		}
