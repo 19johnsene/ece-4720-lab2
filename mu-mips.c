@@ -2402,8 +2402,7 @@ void mips_regs_to_machine(int format, char* mips_instr, uint32_t* machine_instr)
 
 						// PROBLEM IS HERE
 						printf("temp is %s\n", temp);
-						int len = strlen(t);
-						temp = (temp + len + 2); // FIX HERE
+						temp += (strlen(t) + 2);
 						printf("register that is shifted is %s\n", temp);
 						reg_temp = decode_mips_register(temp); // rs
 						reg_temp <<= 21;
