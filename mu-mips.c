@@ -2171,6 +2171,12 @@ void write_instruction(FILE* fp, uint32_t addr) {
 
 		case (0x1): { // bltz or bgez
 			temp = immediate;
+			for (int j = 16; j < 32; j++) {
+				temp += (1 << j);
+			}
+			temp <<= 2;
+			temp += CURRENT_STATE.PC;
+			
 			if ( rt == 1 ) { // bgez
 				fprintf(fp, "bgez ");
 
@@ -2184,6 +2190,7 @@ void write_instruction(FILE* fp, uint32_t addr) {
 
 		case (0x4): { // beq
 			temp = immediate;
+
 			fprintf(fp, "beq ");
 			decode_machine_register(rs, reg_str);
 			fprintf(fp, "%s, ", reg_str);
@@ -2193,7 +2200,8 @@ void write_instruction(FILE* fp, uint32_t addr) {
 		}
 
 		case (0x5): { // bne
-			temp = immediate;	
+			temp = immediate;
+			
 			fprintf(fp, "bne ");
 			decode_machine_register(rs, reg_str);
 			fprintf(fp, "%s, ", reg_str);
@@ -2204,6 +2212,7 @@ void write_instruction(FILE* fp, uint32_t addr) {
 
 		case (0x6): { // blez
 			temp = immediate;		
+			
 			fprintf(fp, "blez ");
 			decode_machine_register(rs, reg_str);
 			fprintf(fp, "%s, 0x%x\n", reg_str, temp);
@@ -2212,6 +2221,7 @@ void write_instruction(FILE* fp, uint32_t addr) {
 
 		case (0x7): { // bgtz
 			temp = immediate;
+
 			fprintf(fp, "bgtz ");
 			decode_machine_register(rs, reg_str);
 			fprintf(fp, "%s, 0x%x\n", reg_str, temp);
